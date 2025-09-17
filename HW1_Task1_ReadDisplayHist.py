@@ -1,7 +1,7 @@
 import numpy as np
 import imageio.v3 as iio
 import matplotlib.pyplot as plt
-from skimage import measure, filters, color, segmentation
+from skimage import measure, filters, color
 from scipy import ndimage
 
 
@@ -81,7 +81,7 @@ def display_BW_histogram(hgram, y, x):
         normPixelCount = normPixelCount + normalizedData[i]
     
     normalizedData[0] = 0 #   <<< remove pure blacks for more informative graphs
-    axarr[y][x].bar(xAxis, normalizedData)
+    axarr[y][x].bar(xAxis, normalizedData, )
     axarr[y][x].set_xticks([0, 51, 102, 153, 204, 255])
     #print("Area under the histogram = ", normPixelCount)
     
@@ -104,7 +104,7 @@ def label_and_crop_last(imgBW, imgOriginal, invertParam):
     data = imgBW
     originalData = imgOriginal
     dataLabels = measure.label(imgWinter_binBW, connectivity=2)
-    groupCount = dataLabels.max()
+    #groupCount = dataLabels.max()
     #coloredImg = color.label2rgb(dataLabels)
     height = data.shape[0]
     width = data.shape[1]
@@ -128,21 +128,63 @@ def label_and_crop_last(imgBW, imgOriginal, invertParam):
                     data_out[h][w] = 0
                 
     return data_out
+
+
+def hgramPixelCount(hgram):
     
+    data = hgram
+    pixels = 0
+    width = len(data)
+    for w in range(width):
+        pixels = pixels + data[w]
+        
+    return pixels
+    
+
+def overlay_histogram(hgram, y, x, z): # y and x in this case being the axis of the original plot being overlayed, and z being the number of pixels of the original hgram.
+    
+    data = hgram
+    width = len(data)
+    xAxis = np.arange(0, width, 1)
+    
+    # normalize so that area under the graph
+    pixelCount = 0
+    for i in range(1, width): # count the number of pixels tallied from the input histogram data.
+        pixelCount = pixelCount + data[i]
+    # pixel count now equals some large number (e.g. 560,000) equal to h x w of image.
+    # need to convert the data so that each pixel is a float, and all the float pixels sum to 1.
+    normFactor = 1/(pixelCount/(pixelCount/z))
+    data = data.astype(float)
+    normalizedData = np.zeros(width, dtype=float)
+    normPixelCount = 0
+    for i in range(width):
+        normalizedData[i] = data[i] * normFactor
+        normPixelCount = normPixelCount + normalizedData[i]
+    
+    normalizedData[0] = 0 #   <<< remove pure blacks for more informative graphs
+    overlay = axarr[y][x].twinx()
+    overlay.bar(xAxis, normalizedData, color='red')
+    overlay.sharey(axarr[y][x])
+    
+    return 0
+
     
 # ~~~~~~~~~~ MAIN ~~~~~~~~~~
 # setup for plotting multiple images
-f, axarr = plt.subplots(4,2)
+f, axarr = plt.subplots(5,2)
 f.tight_layout()
 
 imgWinter = iio.imread("Winter.png") # 1.a. read and store image file.
 axarr[0][0].imshow(imgWinter) # 1.a. display in color (top left plot).
+axarr[0][0].set_title('Original Image')
 
 imgWinter_gscale = rgb_to_gscale(imgWinter) # convert original image to grayscale and copy onto new array.
 axarr[0][1].imshow(imgWinter_gscale, cmap='gray') # 1.a. display in grayscale (bottom left plot).
+axarr[0][1].set_title('Grayscale')
 
 imgWinter_BW_hgram = compute_BW_histogram(imgWinter_gscale) # count each pixel and sort into intensity values.
 display_BW_histogram(imgWinter_BW_hgram, 1, 1) # 1.b. plot the black and white histogram normalized so that area under curve = 1 (bottom right plot).
+axarr[1][1].set_title('Grayscale Histogram')
 
 # 1.c. crop any region of 100 x 100 pixels where there is snow on the ground.
 #   methodology:
@@ -153,16 +195,40 @@ imgWinter_binBW = binarize_gscale(imgWinter_gscale)
 #axarr[2][0].imshow(imgWinter_binBW, cmap='gray')
 imgWinterBackground = label_and_crop_last(imgWinter_binBW, imgWinter_gscale, 1) # 1.c. crop any region of 100 x 100 pixels where there is snow on the ground.
 axarr[2][0].imshow(imgWinterBackground, cmap='gray') # 1.c. display.
+axarr[2][0].set_title('Snow cropped')
+
 imgWinterSnow = label_and_crop_last(imgWinter_binBW, imgWinter_gscale, 0)
 axarr[2][1].imshow(imgWinterSnow, cmap='gray')
-display_BW_histogram(compute_BW_histogram(imgWinterBackground), 3, 0)
-display_BW_histogram(compute_BW_histogram(imgWinterSnow), 3, 1)
+axarr[2][1].set_title('Background cropped')
+
+winterBackground_hgram = compute_BW_histogram(imgWinterBackground)
+display_BW_histogram(winterBackground_hgram, 3, 0)
+axarr[3][0].set_title('Background Histogram')
+snow_hgram = compute_BW_histogram(imgWinterSnow)
+display_BW_histogram(snow_hgram, 3, 1)
+axarr[3][1].set_title('Snow Histogram')
 
 # 1.d. compare the histograms of the entire image and the subregion by overlaying on top of eachother.
+display_BW_histogram(imgWinter_BW_hgram, 1, 0)
+axarr[1][0].set_title("Overlayed Histograms")
+winterPixelCount = hgramPixelCount(imgWinter_BW_hgram)
+overlay_histogram(snow_hgram, 1, 0, winterPixelCount)
 
 # 1.e. read Desert.png.
-# 1.e. convert to BW image.
-# 1.e. display
+imgDesert = iio.imread("Desert.png")
+imgDesert_gscale = rgb_to_gscale(imgDesert) # 1.e. convert to BW image.
+axarr[4][0].imshow(imgDesert_gscale, cmap='gray') # 1.e. display
+axarr[4][0].set_title('Desert Grayscale')
 
 # 1.f. compare the histograms of (e) and (b) by overlaying them.
+desert_hgram = compute_BW_histogram(imgDesert_gscale)
+display_BW_histogram(desert_hgram, 4, 1)
+axarr[4][1].set_title('Desert and Winter')
+desertPixelCount = hgramPixelCount(desert_hgram)
+overlay_histogram(imgWinter_BW_hgram, 4, 1, desertPixelCount)
+
 # 1.f. can these 2 images be discriminated by their histograms?
+print("Based on the histograms alone, the desert and winter scenes can identified.")
+print("The winter scene (blue) has a significant # of pixels on the white-colored side,")
+print("while the desert (blue) has a more even distribution towards the neutral-colors,")
+print("just as we would expect to see looking at a desert and winter scene in real life.")
