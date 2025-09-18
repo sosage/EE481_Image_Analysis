@@ -171,8 +171,8 @@ def overlay_histogram(hgram, y, x, z): # y and x in this case being the axis of 
     
 # ~~~~~~~~~~ MAIN ~~~~~~~~~~
 # setup for plotting multiple images
-f, axarr = plt.subplots(5,2)
-f.tight_layout()
+plt.rc('font', size=6)
+f, axarr = plt.subplots(5, 2, dpi=1000, constrained_layout=True)
 
 imgWinter = iio.imread("Winter.png") # 1.a. read and store image file.
 axarr[0][0].imshow(imgWinter) # 1.a. display in color (top left plot).
