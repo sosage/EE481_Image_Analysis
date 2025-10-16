@@ -1,0 +1,17 @@
+numpy      --- numpy
+imageio.v3 --- imageio
+matplotlib --- matplotlib
+skimage    --- scikit-image
+scikit(?)  --- scikit-learn
+scipy      --- scipy
+cv2        --- opencv
+spyder-k   --- spyder-kernels=3.1
+
+create new environment:
+$ conda create -n opencv_env
+
+example install:
+$ conda install -c conda-forge opencv
+
+all together (new env w/ packages):
+$ conda create -n my-env -c conda-forge spyder-kernels scikit-learn
