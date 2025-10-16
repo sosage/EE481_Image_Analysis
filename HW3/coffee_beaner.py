@@ -9,8 +9,8 @@ import cv2
 # ~~~~~~~~~ DEFINITIONS ~~~~~~~~~
 MAX_PIXELS = 500 * 500
 PLOT_GRID = (2, 3)
-PLOC1 = (1,1); PLOC2 = (1,2); PLOC5 = (1,3);
-PLOC3 = (2,1); PLOC4 = (2,2); PLOC6 = (2,3);
+PLOC1 = (1,1); PLOC3 = (1,2); PLOC2 = (1,3);
+PLOC4 = (2,1); PLOC5 = (2,2); PLOC6 = (2,3);
 
 # ~~~~~~~~~~ FUNCTIONS ~~~~~~~~~~
 # display images and figures on 2D grid of plots with name ax[][]
@@ -105,7 +105,6 @@ imgSegments = ski.segmentation.watershed(-imgDistTrans, labels, mask=imgBinary)
 imgNEW = imgSegments
 easy_plot(imgNEW, PLOC5, 'Step 4, watershed flooding', colors=plt.cm.nipy_spectral_r)
 print("Coffee bean count 2: ", int(count))
-print(lowPoints.shape)
 easy_plot(lowPoints, PLOC5, plotType='pointOverlay', colors='w.')
 ax[PLOC5[0]-1][PLOC5[1]-1].set_axis_off()
 for n in range(lowPoints.shape[0]):
@@ -114,3 +113,30 @@ for n in range(lowPoints.shape[0]):
                                         horizontalalignment='left',
                                         verticalalignment='top',
                                         color='black')
+
+# count beans and plot histogram for size
+segmentProps = ski.measure.regionprops(imgSegments)
+areas = np.zeros(count)
+for n in range(count):
+    areas[n] = segmentProps[n].num_pixels
+histPlot = ax[PLOC6[0]-1][PLOC6[1]-1]
+histPlot.hist(areas, bins=20, color='limegreen')
+histPlot.set_xlabel('Bean Size (pixels)')
+histPlot.set_ylabel('Number of Occurences')
+histPlot.set_title('Step 5, histogram of bean sizes')
+
+# "Assuming that µ=average size of coffee beans, what is the probability
+# that there are coffee beans less than µ/2?"
+mean = sum(areas)/(count)
+print(f"Mean size of coffee beans = ~{mean:,.2f}")
+variance = 0
+for n in range(count):
+    variance = variance + (areas[n]-mean)**2
+variance = variance / (count - 1)
+print(f"Variance = ~{variance:,.2f}")
+samples = 0
+for n in range(count):
+    if areas[n] < (mean/2):
+        samples = samples + 1
+prob = 100 * samples / count
+print(f"Probability that a bean is < µ/2 = ~%{prob:,.2f}")
