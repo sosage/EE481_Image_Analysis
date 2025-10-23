@@ -1,0 +1,71 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 23 13:11:03 2025
+
+@author: fdelaporte
+"""
+
+# Methods referenced from:
+# onionesquereality.wordpress.com/2009/02/11/face-recognition-using-eigenfaces-and-distance-classifiers-a-tutorial/
+# NOTE: greek letters are hard,
+#       G = gamma,  S = psi,  F = phi,  etc.
+
+# M = number of images in the dataset.
+# K = number of most significant Eigenfaces that can approximate a face.
+# K < M
+
+# Nc = number of values in 1 row of an image.
+# Nr = number of values in 1 column of an image.
+# if an image is a matrix of Nc x Nr, then that same image can be represented
+# by a single vector of size (Nc) * (Nr)
+
+# Step 1: read M images I[0], I[2], I[3] ... I[M].
+
+# Step 2: represent each image I[i] as a vector G[i].
+# e.g.
+#                                          [ a ]
+#         [a b c]                          [ b ]
+# I[49] = [d e f] = concatenate => G[49] = [...]
+#         [g h i]                          [ h ]
+#                                          [ i ]
+
+# Step 3: find the average face vector S.
+#               M
+# S = (1 / M) SIGMA{ G[i] }
+#              i=1
+
+# Step 4: subtract the avg. face from each face vector G[i] to get
+# the set of vectors F[i]. This removes "common" features of the faces.
+# F[i] = G[i] - S
+
+# Step 5: find the covariance matrix C.
+# C = A(A^T) where A = [ F[0] F[1] F[2] ... F[M] ]
+# NOTE: C is a N^2 * N^2 matrix and A is a N^2 * M matrix.
+
+# Step 6: calculate the Eigenvectors U[i] of C.
+# BUT this calculation would return N^2 Eigenvectors each being N^2, TOO BIG!
+
+# Step 7: instead consider (A^T)A. Finding the Eigenvectors of this
+# yields a more manageable M Eigenevectors each being M * 1.
+# these are the Eigenvectors V[i].
+
+# Step 8: find the best M Eigenvectors of C = A(A^T).
+# matrix math tells us that U[i] = A(V[i]) and that ||U[i]|| = 1.
+
+# Step 9: select the best K Eigenvectors by trial-and-error.
+# when converted back into image form (i.e. seperated back into a 2D array)
+# these vectors U[i] become the Eigenfaces for this dataset.
+# now each face in the dataset (minus the mean), F[i] can be represented as
+# a linear combination of these Eigenfaces.
+# (and adding the mean back in yields the original face?)
+#  but we still need the weights.
+#          K
+# F[i] = SIGMA{ W[j] U[j] }
+#         j=1
+
+# Step 10: find the weights W[j] of each Eigenvector.
+# W[j] = ( U[j]^T ) F[i]
+# each image in the dataset has a whole vector of weights belonging to it
+#                     [ W[0] ]
+# so therefore Q[i] = [ ...  ] where i = 0, 1, 2 ... M.
+#                     [ W[k] ]
