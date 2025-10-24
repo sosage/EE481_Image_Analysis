@@ -120,16 +120,44 @@ for i in range(0, MAX_IMAGES):
             pixel_vector.append(new_pixel)
             count += 1
     G.append(pixel_vector)
+G = np.array(G)
+
+# verify that vectorization step went as planned,
+# check that the last value of the last image matches the last G vector and
+# that the pixel count of the image matches the length of the vector.
+if I[-1][-1][-1] == G[-1][-1] and I[-1].size == len(G[-1]):
+    print("Images vectorized.")
+else:
+    print("WARNING in image vectorization.")
 
 
 # Step 3: find the average face vector S.
 #               M
 # S = (1 / M) SIGMA{ G[i] }
 #              i=1
+S = np.zeros(len(G[0]))
+for i in range(0, MAX_IMAGES):
+    S = S + G[i]
+S = S.astype(float)
+S = np.round((1/MAX_IMAGES) * S)
+S = S.astype(np.uint8)
+if len(S) == len(G[-1]):
+    print("Average face vector calculated.")
+else:
+    print("WARNING in face vector average.")
+    
 
 # Step 4: subtract the avg. face from each face vector G[i] to get
 # the set of vectors F[i]. This removes "common" features of the faces.
 # F[i] = G[i] - S
+F = []
+for i in range(0, MAX_IMAGES):
+    unique_features = G[0] - S
+    F.append(unique_features)
+if I[-1].size == F[-1].size:
+    print("Common features removed from faces.")
+else:
+    print("WARNING in common features removal.")
 
 # Step 5: find the covariance matrix C.
 # C = A(A^T) where A = [ F[0] F[1] F[2] ... F[M] ]
@@ -141,6 +169,15 @@ for i in range(0, MAX_IMAGES):
 # Step 7: instead consider (A^T)A. Finding the Eigenvectors of this
 # yields a more manageable M Eigenevectors each being M * 1.
 # these are the Eigenvectors V[i].
+matrixA = np.zeros((len(F), MAX_IMAGES))
+for col in range(0, MAX_IMAGES):
+    for row in range(0, len(F)):
+        matrixA[row][col] = F[col][row]
+C = (matrixA.T) * matrixA
+if C.size == (I[-1].size)**2: # does covariance size equals (N^2)*(N^2)?
+    print("Covariance matrix calculated.")
+else:
+    print("WARNING in covariance matrix calc.")
 
 # Step 8: find the best M Eigenvectors of C = A(A^T).
 # matrix math tells us that U[i] = A(V[i]) and that ||U[i]|| = 1.
