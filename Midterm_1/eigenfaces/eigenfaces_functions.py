@@ -35,3 +35,22 @@ def ezplot(plotInfo, plotObj, plotType='image', colors='gray', gridshare=0):
         ax[rowI][colI].sharey(ax[0][0])
    
     return 0;
+
+# ~~~~~~~~~~ Matrix to Vector ~~~~~~~~~~
+def m2v():
+    
+    return 0;
+
+# ~~~~~~~~~~ Vector to Matrix ~~~~~~~~~~
+def v2m(vect, matrixShape):
+    height = matrixShape[0]
+    width = matrixShape[1]
+    mtrx = np.zeros((height, width))
+    
+    i = 0
+    for row in range(0, height):
+        for col in range(0, width):
+            mtrx[row][col] = vect[i]
+            i += 1
+    
+    return mtrx;

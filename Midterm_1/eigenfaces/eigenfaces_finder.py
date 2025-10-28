@@ -30,10 +30,11 @@ from scipy import ndimage as scipy
 
 # ~~~~~~~~~ DEFINITIONS ~~~~~~~~~
 REDUCE = True
-IMAGE_FOLDER = 'K:/Documents/Python (Spyder)/Midterm 1/pain_crops'
-MAX_IMAGES = 9
-PLOT_GRID = (3, 3)
+IMAGE_FOLDER = 'pain_crops'
+MAX_IMAGES = 9 # must be greater than EVECT_MAX
+PLOT_GRID = (7, 3)
 PLOC = np.empty( ((PLOT_GRID[0]*PLOT_GRID[1]), 2) ).astype(np.uint8)
+EVECT_MAX = 6 # max number of eigenvectors calculated for facial reconstruction.
 """
 PLOC[0] = (1,1); PLOC[1] = (1,2); PLOC[2] = (1,3)
 PLOC[3] = (2,1); PLOC[4] = (2,2); PLOC[5] = (2,3)
@@ -46,7 +47,7 @@ class Image:
         self.ploc = ploc
         
     def easy_plot_info(self):
-        return self.data, self.ploc, self.name
+        return self.data, self.ploc, self.name;
 
 
 # ~~~~~~~~~~ FUNCTIONS ~~~~~~~~~~
@@ -98,7 +99,7 @@ for i in range(0, MAX_IMAGES):
     new_img = Image(I_filenames[i], I[i], PLOC[i])
     img_list.append(new_img)
 
-# display the entire list of image objects
+# display M number of image objects
 for i in range(0, MAX_IMAGES):
     eff.ezplot(img_list[i].easy_plot_info(), ax)
     
@@ -121,7 +122,6 @@ for i in range(0, MAX_IMAGES):
             count += 1
     G.append(pixel_vector)
 G = np.array(G)
-
 # verify that vectorization step went as planned,
 # check that the last value of the last image matches the last G vector and
 # that the pixel count of the image matches the length of the vector.
@@ -152,7 +152,7 @@ else:
 # F[i] = G[i] - S
 F = []
 for i in range(0, MAX_IMAGES):
-    unique_features = G[0] - S
+    unique_features = G[i] - S
     F.append(unique_features)
 if I[-1].size == F[-1].size:
     print("Common features removed from faces.")
@@ -166,21 +166,42 @@ else:
 # Step 6: calculate the Eigenvectors U[i] of C.
 # BUT this calculation would return N^2 Eigenvectors each being N^2, TOO BIG!
 
-# Step 7: instead consider (A^T)A. Finding the Eigenvectors of this
+# Step 7: instead consider D = (A^T)A. Finding the Eigenvectors of this
 # yields a more manageable M Eigenevectors each being M * 1.
-# these are the Eigenvectors V[i].
-matrixA = np.zeros((len(F), MAX_IMAGES))
-for col in range(0, MAX_IMAGES):
-    for row in range(0, len(F)):
-        matrixA[row][col] = F[col][row]
-C = (matrixA.T) * matrixA
-if C.size == (I[-1].size)**2: # does covariance size equals (N^2)*(N^2)?
-    print("Covariance matrix calculated.")
+# these are the Eigenvectors V[i]. These can be used to find the desired,
+# eigenvectors of C.
+# Part A: Anti-covariance matrix.
+Nsqd = len(F[0]) # number of elements of one side of the OG image.
+M = MAX_IMAGES # number of images in the dataset & also no. of columns in the matrix A.
+matrixA = np.zeros((Nsqd, M))
+for m in range(0, Nsqd):
+    for n in range(0, M):
+        matrixA[m][n] = F[n][m]
+matrixD = (matrixA.T) @ matrixA # matrix multiplication operator
+if matrixD.size == MAX_IMAGES**2: # does matrixD size equal (M)*(M)?
+    print("Anti-covariance matrix calculated.")
 else:
-    print("WARNING in covariance matrix calc.")
+    print("WARNING in anti-covariance matrix calc.")
+# Part B: Eigenvectors V.
+V_vals, V_vects = np.linalg.eig(matrixD)
+if matrixD.shape == V_vects.shape: # does vectors size equal M*((M)*(1))?
+    print("Anti-covariance eigens calculated.")
+else:
+    print("WARNING in anti-covariance eigen calc.")
+
 
 # Step 8: find the best M Eigenvectors of C = A(A^T).
 # matrix math tells us that U[i] = A(V[i]) and that ||U[i]|| = 1.
+K = EVECT_MAX
+U_vects = []
+for i in range(0, K):
+    new_vector = matrixA @ V_vects[i]
+    U_vects.append(new_vector)
+if len(U_vects) == K and len(U_vects[0]) == Nsqd:
+    print(f"{K} covariance eigens calculated.")
+else:
+    print("WARNING in covariance eigen calc.")
+
 
 # Step 9: select the best K Eigenvectors by trial-and-error.
 # when converted back into image form (i.e. seperated back into a 2D array)
@@ -199,3 +220,53 @@ else:
 #                     [ W[0] ]
 # so therefore Q[i] = [ ...  ] where i = 0, 1, 2 ... M.
 #                     [ W[k] ]
+Q = []
+for i in range(0, MAX_IMAGES):
+    wVect = []
+    for w in range(0, EVECT_MAX):
+        weight = U_vects[w].T @ F[i]
+        wVect.append(weight)
+    Q.append(wVect)
+print(f"{len(Q)} sets of {len(Q[0])} weights calculated.")
+
+# Step 11: Reconstruct an image for evaluation
+# F[i] + S = I[i]
+# ...and...
+#          K
+# F[i] = SIGMA{ W[j] U[j] }
+#         j=1
+nameSel = "f11d1.jpg"
+iSel = 0
+for i in range(0, MAX_IMAGES):
+    name = img_list[i].name
+    if name == nameSel:
+        iSel = i
+        print(f"Reconstructing image #{i}, {nameSel}")
+    else:
+        print("No name found. Reconstructing image #0.")
+Frecon = np.zeros(Nsqd)
+for w in range(0, EVECT_MAX):
+    Frecon = (Q[iSel][w] * U_vects[w]) + Frecon
+Grecon = Frecon + S
+
+
+# display the operations performed on an image
+iSel = 0 # image select
+iDim = I[iSel].shape # image dimensions
+Gmat = eff.v2m(G[iSel], (iDim))
+Smat = eff.v2m(S, (iDim))
+Fmat = eff.v2m(F[iSel], (iDim))
+Gamma = Image("Step 1, vectorize", Gmat, PLOC[MAX_IMAGES])
+Sigma = Image("Step 2, avg face vect", Smat, PLOC[MAX_IMAGES+1])
+Fhi = Image("Step 3, subtract from img", Fmat, PLOC[MAX_IMAGES+2])
+eff.ezplot(Gamma.easy_plot_info(), ax)
+eff.ezplot(Sigma.easy_plot_info(), ax)
+eff.ezplot(Fhi.easy_plot_info(), ax)
+Eigenfaces = []
+for i in range(0, EVECT_MAX):
+    U_img = eff.v2m(U_vects[i], iDim)
+    new_eigface = Image(f"Eigenface {i}", U_img, PLOC[MAX_IMAGES+3+i])
+    Eigenfaces.append(new_eigface)
+    eff.ezplot(Eigenfaces[i].easy_plot_info(), ax)
+Irecon = Image("Reconstructed image", eff.v2m(Grecon, iDim), PLOC[-1])
+eff.ezplot(Irecon.easy_plot_info(), ax)
