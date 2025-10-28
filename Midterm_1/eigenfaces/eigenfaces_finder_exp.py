@@ -31,10 +31,10 @@ from scipy import ndimage as scipy
 # ~~~~~~~~~ DEFINITIONS ~~~~~~~~~
 REDUCE = True
 IMAGE_FOLDER = 'pain_crops'
-MAX_IMAGES = 9 # must be greater than EVECT_MAX
-PLOT_GRID = (7, 3)
+MAX_IMAGES = 84 # must be greater than EVECT_MAX
+PLOT_GRID = (3, 3)
 PLOC = np.empty( ((PLOT_GRID[0]*PLOT_GRID[1]), 2) ).astype(np.uint8)
-EVECT_MAX = 6 # max number of eigenvectors calculated for facial reconstruction.
+EVECT_MAX = 5 # max number of eigenvectors calculated for facial reconstruction.
 """
 PLOC[0] = (1,1); PLOC[1] = (1,2); PLOC[2] = (1,3)
 PLOC[3] = (2,1); PLOC[4] = (2,2); PLOC[5] = (2,3)
@@ -96,12 +96,14 @@ idx = 0
 # add images to list of image objects
 img_list = []
 for i in range(0, MAX_IMAGES):
-    new_img = Image(I_filenames[i], I[i], PLOC[i])
+    new_img = Image(I_filenames[i], I[i], (100,100)) # EXP PLOC[i] replaces (100,100)
     img_list.append(new_img)
 
+"""
 # display M number of image objects
 for i in range(0, MAX_IMAGES):
     eff.ezplot(img_list[i].easy_plot_info(), ax)
+"""
     
 
 # Step 2: represent each image I[i] as a vector G[i].
@@ -197,17 +199,22 @@ K = EVECT_MAX
 U_vects = []
 largest_idx = []
 copy = V_vals
-highest_val = max(V_vals)
-for i in range(0, MAX_IMAGES):
-    if copy[i] == highest_val:
-        largest_idx.append(i)
-        copy[i] = np.zeros(copy[i].shape)
-        highest_val = max(copy)
+np.sort(copy)
+new_idx = 0
+for i in range(0, K):
+    for j in range(0, MAX_IMAGES):
+        if V_vals[j] == copy[i]:
+            new_idx = i
+    largest_idx.append(new_idx)
+print("Largest e-vals at idx: ", largest_idx)
 
-for i in range(0, MAX_IMAGES):
+for i in range(0, K):
     if i in largest_idx:
         new_vector = matrixA @ V_vects[i]
+        mag = np.linalg.norm(new_vector)
+        new_vector = new_vector/mag # equalize so that vector mag = 1
         U_vects.append(new_vector)
+
 if len(U_vects) == K and len(U_vects[0]) == Nsqd:
     print(f"{K} covariance eigens calculated.")
 else:
@@ -246,7 +253,7 @@ print(f"{len(Q)} sets of {len(Q[0])} weights calculated.")
 #          K
 # F[i] = SIGMA{ W[j] U[j] }
 #         j=1
-nameSel = "f11d1.jpg"
+nameSel = "f1a2.jpg"
 iSel = 0
 for i in range(0, MAX_IMAGES):
     name = img_list[i].name
@@ -259,25 +266,28 @@ Frecon = np.zeros(Nsqd)
 for w in range(0, EVECT_MAX):
     Frecon = (Q[iSel][w] * U_vects[w]) + Frecon
 Grecon = Frecon + S
+Grecon = 255 * Grecon / (np.max(Grecon))
 
-
-# display the operations performed on an image
-iSel = 0 # image select
+# display the operations performed on an image# image select
 iDim = I[iSel].shape # image dimensions
 Gmat = eff.v2m(G[iSel], (iDim))
 Smat = eff.v2m(S, (iDim))
 Fmat = eff.v2m(F[iSel], (iDim))
-Gamma = Image("Step 1, vectorize", Gmat, PLOC[MAX_IMAGES])
-Sigma = Image("Step 2, avg face vect", Smat, PLOC[MAX_IMAGES+1])
-Fhi = Image("Step 3, subtract from img", Fmat, PLOC[MAX_IMAGES+2])
+Gamma = Image("Step 1, vectorize", Gmat, PLOC[0])
+Sigma = Image("Step 2, avg face vect", Smat, PLOC[1])
+Fhi = Image("Step 3, subtract from img", Fmat, PLOC[2])
 eff.ezplot(Gamma.easy_plot_info(), ax)
 eff.ezplot(Sigma.easy_plot_info(), ax)
 eff.ezplot(Fhi.easy_plot_info(), ax)
 Eigenfaces = []
-for i in range(0, EVECT_MAX):
+for i in range(0, 5):
     U_img = eff.v2m(U_vects[i], iDim)
-    new_eigface = Image(f"Eigenface {i}", U_img, PLOC[MAX_IMAGES+3+i])
+    new_eigface = Image(f"Eigenface {i}", U_img, PLOC[3+i])
     Eigenfaces.append(new_eigface)
     eff.ezplot(Eigenfaces[i].easy_plot_info(), ax)
 Irecon = Image("Reconstructed image", eff.v2m(Grecon, iDim), PLOC[-1])
 eff.ezplot(Irecon.easy_plot_info(), ax)
+
+# What is the error due to dimensionality reduction?
+error = np.linalg.norm(G[iSel] - Grecon)
+print(f"Error of reconstruction vs original: {error}%")
