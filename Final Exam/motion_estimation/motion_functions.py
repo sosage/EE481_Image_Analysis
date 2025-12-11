@@ -137,19 +137,19 @@ def compute_LuKan(patch, It):
     A_prime = np.zeros((2,2))
     b_prime = np.zeros((2,1))
     for i in range(0, A.shape[0]):
-        A_prime[0,0] = A_prime[0,0] + (Ix_v[i] * Ix_v[i])
-        A_prime[0,1] = A_prime[0,1] + (Iy_v[i] * Ix_v[i])
-        A_prime[1,0] = A_prime[1,0] + (Ix_v[i] * Iy_v[i])
-        A_prime[1,1] = A_prime[1,1] + (Iy_v[i] * Iy_v[i])
-        b_prime[0,0] = b_prime[0,0] + (Ix_v[i] * It_v[i])
-        b_prime[1,0] = b_prime[1,0] + (Iy_v[i] * It_v[i])
+        A_prime[0,0] = A_prime[0,0] + (Ix_v[i] * Ix_v[i]) # Σ{ Ix Ix }, p ∈ P
+        A_prime[0,1] = A_prime[0,1] + (Ix_v[i] * Iy_v[i]) # Σ{ Ix Iy }
+        A_prime[1,0] = A_prime[1,0] + (Iy_v[i] * Ix_v[i]) # Σ{ Iy Ix }
+        A_prime[1,1] = A_prime[1,1] + (Iy_v[i] * Iy_v[i]) # Σ{ Iy Iy }
+        b_prime[0,0] = b_prime[0,0] + (Ix_v[i] * It_v[i]) # Σ{ Ix It }
+        b_prime[1,0] = b_prime[1,0] + (Iy_v[i] * It_v[i]) # Σ{ Iy It }
     """            A^T A              x̂  =         A^T b
         [                         ]             [            ]
         [ Σ{ Ix Ix }   Σ{ Ix Iy } ]             [ Σ{ Ix It } ]
-	    [ p ∈ P        p ∈ P      ]             [ p ∈ P      ]
+	    [ p ∈ P        p ∈ P    ]             [ p ∈ P     ]
         [                         ] [ u ]       [            ]
         [ Σ{ IyIx }    Σ{ Iy Iy } ] [ v ] = (-) [ Σ{ Iy It } ]
-	    [ p ∈ P        p ∈ P      ]             [ p ∈ P      ]
+	    [ p ∈ P        p ∈ P    ]             [ p ∈ P     ]
         [                         ]             [            ]
         where p ∈ P is all pixels p in the patch P.
     """
